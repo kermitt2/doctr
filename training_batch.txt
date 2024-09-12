@@ -1,0 +1,2 @@
+python references/detection/train_pytorch.py ./training ./validation fast_base --name fast_grey --device 0 --epochs 50 --batch_size 5 --lr 0.0031 --sched onecycle --amp --early-stop
+
