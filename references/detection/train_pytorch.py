@@ -169,6 +169,10 @@ def evaluate(model, val_loader, batch_transforms, val_metric, amp=False):
     recall, precision, mean_iou = val_metric.summary()
     return val_loss, recall, precision, mean_iou
 
+def _fscore(precision, recall):
+    if precision == 0.0 and recall == 0:
+        return 0.0
+    return 2 * precision * recall / (precision + recall)
 
 def main(args):
     print(args)
@@ -386,12 +390,15 @@ def main(args):
     if args.early_stop:
         early_stopper = EarlyStopper(patience=args.early_stop_epochs, min_delta=args.early_stop_delta)
     max_iou = 0.0
+    max_f1_score = 0.0
+    best_epoch = 0
 
     # Training loop
     for epoch in range(args.epochs):
         fit_one_epoch(model, train_loader, batch_transforms, optimizer, scheduler, amp=args.amp)
         # Validation loop at the end of each epoch
         val_loss, recall, precision, mean_iou = evaluate(model, val_loader, batch_transforms, val_metric, amp=args.amp)
+        fscore = _fscore(precision, recall)
         """
         if val_loss < min_loss:
             print(f"Validation loss decreased {min_loss:.6} --> {val_loss:.6}: saving state...")
@@ -399,22 +406,30 @@ def main(args):
             min_loss = val_loss
         """
         
-        """
-        if args.save_interval_epoch:
-            print(f"Saving state at epoch: {epoch + 1}")
-            torch.save(model.state_dict(), f"./{exp_name}_epoch{epoch + 1}.pt")
-        """
         log_msg = f"Epoch {epoch + 1}/{args.epochs} - Validation loss: {val_loss:.6} "
         if any(val is None for val in (recall, precision, mean_iou)):
             log_msg += "(Undefined metric value, caused by empty GTs or predictions)"
         else:
-            log_msg += f"(Recall: {recall:.2%} | Precision: {precision:.2%} | Mean IoU: {mean_iou:.2%})"
+            log_msg += f"(Recall: {recall:.2%} | Precision: {precision:.2%} | F1-score: {fscore:.2%} | Mean IoU: {mean_iou:.2%})"
         print(log_msg)
+
+        if args.save_interval_epoch:
+            print(f"Saving state at epoch: {epoch + 1}")
+            torch.save(model.state_dict(), f"./{exp_name}_epoch{epoch + 1}.pt")
 
         if mean_iou > max_iou:
             print(f"Validation IoU increased {max_iou:.6} --> {mean_iou:.6}: saving state...")
             torch.save(model.state_dict(), f"./{exp_name}.pt")
             max_iou = mean_iou
+            best_epoch = epoch
+
+        """
+        if fscore > max_f1_score:
+            print(f"Validation F1-score increased {max_f1_score:.6} --> {fscore:.6}: saving state...")
+            torch.save(model.state_dict(), f"./{exp_name}.pt")
+            max_f1_score = fscore
+            best_epoch = epoch
+        """
         
         # W&B
         if args.wb:
@@ -432,6 +447,8 @@ def main(args):
             break
     if args.wb:
         run.finish()
+
+    print("Best model wrt to Mean IoU at epoch", str(best_epoch))
 
     if args.push_to_hub:
         push_to_hf_hub(model, exp_name, task="detection", run_config=args)
