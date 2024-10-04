@@ -141,5 +141,6 @@ wandb/
 
 training
 validation
+reco
 *.small
 

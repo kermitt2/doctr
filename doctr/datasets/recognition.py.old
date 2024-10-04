@@ -41,14 +41,10 @@ class RecognitionDataset(AbstractDataset):
             labels = json.load(f)
 
         for img_name, label in labels.items():
-            if len(img_name)>14:
-                if not os.path.exists(os.path.join(os.path.join(self.root, img_name[0:14]),img_name[15:])):
-                   raise FileNotFoundError(f"unable to locate {os.path.join(os.path.join(self.root, img_name[0:14]),img_name[15:])}")
-                self.data.append(((str(Path(img_name[0:14]).joinpath(img_name[15:])), label)))
-            else:
-                if not os.path.exists(os.path.join(self.root, img_name)):
-                   raise FileNotFoundError(f"unable to locate {os.path.join(self.root, img_name)}")
-                self.data.append((img_name, label))
+            if not os.path.exists(os.path.join(self.root, img_name)):
+                raise FileNotFoundError(f"unable to locate {os.path.join(self.root, img_name)}")
+
+            self.data.append((img_name, label))
 
     def merge_dataset(self, ds: AbstractDataset) -> None:
         # Update data with new root for self
