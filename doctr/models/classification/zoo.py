@@ -17,6 +17,7 @@ ARCHS: List[str] = [
     "magc_resnet31",
     "mobilenet_v3_small",
     "mobilenet_v3_small_r",
+    "mobilenet_v3_small_r_grey",
     "mobilenet_v3_large",
     "mobilenet_v3_large_r",
     "resnet18",

@@ -212,7 +212,7 @@ def main(args):
             img_transforms=Compose([
                 T.Resize((args.input_size, 4 * args.input_size), preserve_aspect_ratio=True),
                 # Ensure we have a 90% split of white-background images
-                T.RandomApply(T.ColorInversion(), 0.9),
+                #T.RandomApply(T.ColorInversion(), 0.9),
             ]),
         )
 
@@ -281,13 +281,13 @@ def main(args):
             img_transforms=Compose([
                 T.Resize((args.input_size, 4 * args.input_size), preserve_aspect_ratio=True),
                 # Augmentations
-                T.RandomApply(T.ColorInversion(), 0.1),
-                RandomGrayscale(p=0.1),
-                RandomPhotometricDistort(p=0.1),
-                T.RandomApply(T.RandomShadow(), p=0.4),
-                T.RandomApply(T.GaussianNoise(mean=0, std=0.1), 0.1),
-                T.RandomApply(GaussianBlur(3), 0.3),
-                RandomPerspective(distortion_scale=0.2, p=0.3),
+                #T.RandomApply(T.ColorInversion(), 0.1),
+                #RandomGrayscale(p=0.1),
+                #RandomPhotometricDistort(p=0.1),
+                #T.RandomApply(T.RandomShadow(), p=0.4),
+                #T.RandomApply(T.GaussianNoise(mean=0, std=0.1), 0.1),
+                #T.RandomApply(GaussianBlur(3), 0.3),
+                #RandomPerspective(distortion_scale=0.2, p=0.3),
             ]),
         )
         if len(parts) > 1:
@@ -307,13 +307,13 @@ def main(args):
             img_transforms=Compose([
                 T.Resize((args.input_size, 4 * args.input_size), preserve_aspect_ratio=True),
                 # Ensure we have a 90% split of white-background images
-                T.RandomApply(T.ColorInversion(), 0.9),
-                RandomGrayscale(p=0.1),
-                RandomPhotometricDistort(p=0.1),
-                T.RandomApply(T.RandomShadow(), p=0.4),
-                T.RandomApply(T.GaussianNoise(mean=0, std=0.1), 0.1),
-                T.RandomApply(GaussianBlur(3), 0.3),
-                RandomPerspective(distortion_scale=0.2, p=0.3),
+                #T.RandomApply(T.ColorInversion(), 0.9),
+                #RandomGrayscale(p=0.1),
+                #RandomPhotometricDistort(p=0.1),
+                #T.RandomApply(T.RandomShadow(), p=0.4),
+                #T.RandomApply(T.GaussianNoise(mean=0, std=0.1), 0.1),
+                #T.RandomApply(GaussianBlur(3), 0.3),
+                #RandomPerspective(distortion_scale=0.2, p=0.3),
             ]),
         )
 

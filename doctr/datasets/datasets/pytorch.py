@@ -56,9 +56,11 @@ class AbstractDataset(_AbstractDataset):
     @staticmethod
     def collate_fn(samples: List[Tuple[torch.Tensor, Any]]) -> Tuple[torch.Tensor, List[Any]]:
         images, targets = zip(*samples)
-        for image in images:
-            if image.shape[0] == 3:
-                print("warning: ",  image.size())
+        #for image in images:
+        #    print(image.shape)
+        #    if image.shape[0] == 3:
+        #        print("warning: ",  image.size())
+
         images = torch.stack(images, dim=0)  # type: ignore[assignment]
 
         return images, list(targets)  # type: ignore[return-value]

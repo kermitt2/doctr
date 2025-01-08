@@ -9,16 +9,19 @@ from copy import deepcopy
 from typing import Any, Dict, List, Optional
 
 from torchvision.models import mobilenetv3
-from torchvision.models.mobilenetv3 import MobileNetV3
+from torchvision.models.mobilenetv3 import MobileNetV3, InvertedResidualConfig
 
 from doctr.datasets import VOCABS
 
 from ...utils import load_pretrained_params
 
+from functools import partial
+
 __all__ = [
     "MobileNetV3",
     "mobilenet_v3_small",
     "mobilenet_v3_small_r",
+    "mobilenet_v3_small_r_grey",
     "mobilenet_v3_large",
     "mobilenet_v3_large_r",
     "mobilenet_v3_small_crop_orientation",
@@ -54,6 +57,13 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "classes": list(VOCABS["french"]),
         "url": "https://doctr-static.mindee.com/models?id=v0.4.1/mobilenet_v3_small_r-1a8a3530.pt&src=0",
     },
+    "mobilenet_v3_small_r_grey": {
+        "mean": (0.694, 0.695, 0.693),
+        "std": (0.299, 0.296, 0.301),
+        "input_shape": (1, 48, 48),
+        "classes": list(VOCABS["french"]),
+        #"url": "https://doctr-static.mindee.com/models?id=v0.4.1/mobilenet_v3_small_r-1a8a3530.pt&src=0",
+    },
     "mobilenet_v3_small_crop_orientation": {
         "mean": (0.694, 0.695, 0.693),
         "std": (0.299, 0.296, 0.301),
@@ -70,7 +80,6 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
     },
 }
 
-
 def _mobilenet_v3(
     arch: str,
     pretrained: bool,
@@ -79,6 +88,7 @@ def _mobilenet_v3(
     **kwargs: Any,
 ) -> mobilenetv3.MobileNetV3:
     kwargs["num_classes"] = kwargs.get("num_classes", len(default_cfgs[arch]["classes"]))
+    num_class = len(default_cfgs[arch]["classes"])
     kwargs["classes"] = kwargs.get("classes", default_cfgs[arch]["classes"])
 
     _cfg = deepcopy(default_cfgs[arch])
@@ -86,7 +96,31 @@ def _mobilenet_v3(
     _cfg["classes"] = kwargs["classes"]
     kwargs.pop("classes")
 
-    if arch.startswith("mobilenet_v3_small"):
+    if arch.startswith("mobilenet_v3_small") and arch.endswith("grey"):
+        width_mult = 1.0
+        reduced_tail = False
+        dilated = False
+        reduce_divider = 2 if reduced_tail else 1
+        dilation = 2 if dilated else 1
+        bneck_conf = partial(InvertedResidualConfig, width_mult=width_mult)
+        inverted_residual_setting = [
+            bneck_conf(16, 1, 48, 48, True, "RE", 2, 1),  # C1
+            bneck_conf(16, 3, 72, 48, False, "RE", 2, 1),  # C2
+            bneck_conf(24, 3, 88, 48, False, "RE", 1, 1),
+            bneck_conf(24, 5, 96, 48, True, "HS", 2, 1),  # C3
+            bneck_conf(40, 5, 240, 48, True, "HS", 1, 1),
+            bneck_conf(40, 5, 240, 48, True, "HS", 1, 1),
+            bneck_conf(40, 5, 120, 48, True, "HS", 1, 1),
+            bneck_conf(48, 5, 144, 48, True, "HS", 1, 1),
+            bneck_conf(48, 5, 288, 96 // reduce_divider, True, "HS", 2, dilation),  # C4
+            bneck_conf(96 // reduce_divider, 5, 576 // reduce_divider, 96 // reduce_divider, True, "HS", 1, dilation),
+            bneck_conf(96 // reduce_divider, 5, 576 // reduce_divider, 96 // reduce_divider, True, "HS", 1, dilation),
+        ]
+        #del kwargs["inverted_residual_setting"]
+        print(kwargs)
+        kwargs.pop("num_classes")
+        model = mobilenetv3.mobilenet_v3_small(inverted_residual_setting, **kwargs, num_class=num_class, weights=None)
+    elif arch.startswith("mobilenet_v3_small"):
         model = mobilenetv3.mobilenet_v3_small(**kwargs, weights=None)
     else:
         model = mobilenetv3.mobilenet_v3_large(**kwargs, weights=None)
@@ -98,6 +132,8 @@ def _mobilenet_v3(
             for child in layer_name.split("."):
                 m = getattr(m, child)
             m.stride = (2, 1)
+
+    print("pretrained", str(pretrained))
 
     # Load pretrained parameters
     if pretrained:
@@ -164,6 +200,33 @@ def mobilenet_v3_small_r(pretrained: bool = False, **kwargs: Any) -> mobilenetv3
         **kwargs,
     )
 
+def mobilenet_v3_small_r_grey(pretrained: bool = False, **kwargs: Any) -> mobilenetv3.MobileNetV3:
+    """MobileNetV3-Small architecture as described in
+    `"Searching for MobileNetV3",
+    <https://arxiv.org/pdf/1905.02244.pdf>`_, with rectangular pooling.
+
+    >>> import torch
+    >>> from doctr.models import mobilenet_v3_small_r
+    >>> model = mobilenet_v3_small_r(pretrained=False)
+    >>> input_tensor = torch.rand((1, 3, 512, 512), dtype=torch.float32)
+    >>> out = model(input_tensor)
+
+    Args:
+    ----
+        pretrained: boolean, True if model is pretrained
+        **kwargs: keyword arguments of the MobileNetV3 architecture
+
+    Returns:
+    -------
+        a torch.nn.Module
+    """
+    return _mobilenet_v3(
+        "mobilenet_v3_small_r_grey",
+        pretrained=False,
+        rect_strides=["features.2.block.1.0", "features.4.block.1.0", "features.9.block.1.0"],
+        ignore_keys=["classifier.3.weight", "classifier.3.bias"],
+        **kwargs,
+    )
 
 def mobilenet_v3_large(pretrained: bool = False, **kwargs: Any) -> mobilenetv3.MobileNetV3:
     """MobileNetV3-Large architecture as described in

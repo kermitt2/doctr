@@ -17,6 +17,7 @@ __all__ = ["recognition_predictor"]
 ARCHS: List[str] = [
     "crnn_vgg16_bn",
     "crnn_mobilenet_v3_small",
+    "crnn_mobilenet_v3_small_grey"
     "crnn_mobilenet_v3_large",
     "sar_resnet31",
     "master",

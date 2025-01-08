@@ -13,11 +13,11 @@ from torch.nn import functional as F
 
 from doctr.datasets import VOCABS, decode_sequence
 
-from ...classification import mobilenet_v3_large_r, mobilenet_v3_small_r, vgg16_bn_r
+from ...classification import mobilenet_v3_large_r, mobilenet_v3_small_r, mobilenet_v3_small_r_grey, vgg16_bn_r
 from ...utils.pytorch import load_pretrained_params
 from ..core import RecognitionModel, RecognitionPostProcessor
 
-__all__ = ["CRNN", "crnn_vgg16_bn", "crnn_mobilenet_v3_small", "crnn_mobilenet_v3_large"]
+__all__ = ["CRNN", "crnn_vgg16_bn", "crnn_mobilenet_v3_small", "crnn_mobilenet_v3_small_grey", "crnn_mobilenet_v3_large"]
 
 default_cfgs: Dict[str, Dict[str, Any]] = {
     "crnn_vgg16_bn": {
@@ -33,6 +33,13 @@ default_cfgs: Dict[str, Dict[str, Any]] = {
         "input_shape": (3, 32, 128),
         "vocab": VOCABS["french"],
         "url": "https://doctr-static.mindee.com/models?id=v0.3.1/crnn_mobilenet_v3_small_pt-3b919a02.pt&src=0",
+    },
+    "crnn_mobilenet_v3_small_grey": {
+        "mean": (0.694, 0.695, 0.693),
+        "std": (0.299, 0.296, 0.301),
+        "input_shape": (1, 48, 128),
+        "vocab": VOCABS["french"],
+        #"url": "https://doctr-static.mindee.com/models?id=v0.3.1/crnn_mobilenet_v3_small_pt-3b919a02.pt&src=0",
     },
     "crnn_mobilenet_v3_large": {
         "mean": (0.694, 0.695, 0.693),
@@ -119,20 +126,26 @@ class CRNN(RecognitionModel, nn.Module):
         feature_extractor: nn.Module,
         vocab: str,
         rnn_units: int = 128,
-        input_shape: Tuple[int, int, int] = (3, 32, 128),
+        input_shape: Tuple[int, int, int] = (1, 32, 128),
         exportable: bool = False,
         cfg: Optional[Dict[str, Any]] = None,
     ) -> None:
         super().__init__()
         self.vocab = vocab
         self.cfg = cfg
-        self.max_length = 32
+        #self.max_length = 32
+        self.max_length = 48
         self.exportable = exportable
         self.feat_extractor = feature_extractor
 
         # Resolve the input_size of the LSTM
+
+        print(input_shape)
+
         with torch.inference_mode():
             out_shape = self.feat_extractor(torch.zeros((1, *input_shape))).shape
+
+        print(out_shape)
         lstm_in = out_shape[1] * out_shape[2]
 
         self.decoder = nn.LSTM(
@@ -310,6 +323,32 @@ def crnn_mobilenet_v3_small(pretrained: bool = False, **kwargs: Any) -> CRNN:
         **kwargs,
     )
 
+def crnn_mobilenet_v3_small_grey(pretrained: bool = False, **kwargs: Any) -> CRNN:
+    """CRNN with a MobileNet V3 Small backbone as described in `"An End-to-End Trainable Neural Network for Image-based
+    Sequence Recognition and Its Application to Scene Text Recognition" <https://arxiv.org/pdf/1507.05717.pdf>`_.
+
+    >>> import torch
+    >>> from doctr.models import crnn_mobilenet_v3_small
+    >>> model = crnn_mobilenet_v3_small(pretrained=True)
+    >>> input_tensor = torch.rand(1, 1, 32, 128)
+    >>> out = model(input_tensor)
+
+    Args:
+    ----
+        pretrained (bool): If True, returns a model pre-trained on our text recognition dataset
+        **kwargs: keyword arguments of the CRNN architecture
+
+    Returns:
+    -------
+        text recognition architecture
+    """
+    return _crnn(
+        "crnn_mobilenet_v3_small_grey",
+        False,
+        mobilenet_v3_small_r_grey,
+        ignore_keys=["linear.weight", "linear.bias"],
+        **kwargs,
+    )
 
 def crnn_mobilenet_v3_large(pretrained: bool = False, **kwargs: Any) -> CRNN:
     """CRNN with a MobileNet V3 Large backbone as described in `"An End-to-End Trainable Neural Network for Image-based
