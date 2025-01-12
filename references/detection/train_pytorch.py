@@ -220,7 +220,8 @@ def main(args):
     with open(os.path.join(args.val_path, "labels.json"), "rb") as f:
         val_hash = hashlib.sha256(f.read()).hexdigest()
 
-    batch_transforms = Normalize(mean=(0.798, 0.785, 0.772), std=(0.264, 0.2749, 0.287))
+    #batch_transforms = Normalize(mean=(0.798, 0.785, 0.772), std=(0.264, 0.2749, 0.287))
+    batch_transforms = Normalize(mean=(0.798, ), std=(0.264, ))
 
     # Load doctr model
     model = detection.__dict__[args.arch](
