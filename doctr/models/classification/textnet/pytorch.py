@@ -120,7 +120,7 @@ class TextNetGrey(nn.Sequential):
     def __init__(
         self,
         stages: List[Dict[str, List[int]]],
-        input_shape: Tuple[int, int, int] = (3, 32, 32),
+        input_shape: Tuple[int, int, int] = (1, 32, 32),
         num_classes: int = 1000,
         include_top: bool = True,
         cfg: Optional[Dict[str, Any]] = None,
